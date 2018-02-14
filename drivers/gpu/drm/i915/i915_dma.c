@@ -50,6 +50,7 @@
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/oom.h>
+#include <linux/prints.h>
 
 static async_cookie_t async_fbdev_init_cfg_cookie;
 
@@ -1405,6 +1406,7 @@ const struct drm_ioctl_desc i915_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_GETPARAM, i915_gem_context_getparam_ioctl, DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_SETPARAM, i915_gem_context_setparam_ioctl, DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(I915_GEM_VGTBUFFER, i915_gem_vgtbuffer_ioctl, DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(I915_GEM_PINPAGES, i915_gem_pinpages_ioctl, DRM_UNLOCKED | DRM_RENDER_ALLOW),
 };
 
 int i915_max_ioctl = ARRAY_SIZE(i915_ioctls);

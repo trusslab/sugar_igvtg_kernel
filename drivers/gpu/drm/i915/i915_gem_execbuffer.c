@@ -33,6 +33,7 @@
 #include "intel_drv.h"
 #include <linux/dma_remapping.h>
 #include <linux/uaccess.h>
+#include <linux/prints.h>
 
 #define  __EXEC_OBJECT_HAS_PIN (1<<31)
 #define  __EXEC_OBJECT_HAS_FENCE (1<<30)
@@ -1357,6 +1358,7 @@ eb_get_batch(struct eb_vmas *eb)
 
 	return vma->obj;
 }
+
 
 static int
 i915_gem_do_execbuffer(struct drm_device *dev, void *data,

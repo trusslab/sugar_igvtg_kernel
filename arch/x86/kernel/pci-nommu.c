@@ -10,6 +10,7 @@
 #include <asm/processor.h>
 #include <asm/iommu.h>
 #include <asm/dma.h>
+#include <linux/prints.h>
 
 static int
 check_addr(char *name, struct device *hwdev, dma_addr_t bus, size_t size)

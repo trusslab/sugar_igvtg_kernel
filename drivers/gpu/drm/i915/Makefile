@@ -124,6 +124,7 @@ i915-$(CONFIG_I915_VGT)  += $(VGT)/vgt.o	\
 			   $(VGT)/fb_decoder.o \
 			   $(VGT)/vbios.o \
 			   $(VGT)/host.o \
+			   $(VGT)/local.o \
 			   $(VGT)/execlists.o \
 			   $(VGT)/legacy/render_hsw.o \
 			   $(VGT)/migration.o \

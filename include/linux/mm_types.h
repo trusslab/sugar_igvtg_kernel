@@ -333,7 +333,11 @@ struct vm_area_struct {
 	struct mempolicy *vm_policy;	/* NUMA policy for the VMA */
 #endif
 	struct vm_userfaultfd_ctx vm_userfaultfd_ctx;
+	int emulated_range;
+	struct list_head emulated_ranges_list;
 };
+
+#define HAS_EMULATED_RANGE	0xdeadbeef
 
 struct core_thread {
 	struct task_struct *task;

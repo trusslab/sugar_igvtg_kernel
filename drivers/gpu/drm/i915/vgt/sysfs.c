@@ -20,6 +20,7 @@
 #include <linux/slab.h>
 #include "vgt.h"
 #include <linux/spinlock.h>
+#include <linux/prints.h>
 
 struct kobject *vgt_ctrl_kobj;
 static struct kset *vgt_kset;
@@ -41,7 +42,7 @@ static ssize_t vgt_create_instance_store(struct kobject *kobj, struct kobj_attri
 {
 	vgt_params_t vp;
 	int param_cnt;
-	char param_str[64];
+	char param_str[128];
 	int rc;
 	int high_gm_sz;
 	int low_gm_sz;
@@ -50,17 +51,29 @@ static ssize_t vgt_create_instance_store(struct kobject *kobj, struct kobj_attri
 	* wants a MB aperture and b MB gm, and c fence registers) or -vmid
 	* (where we want to release the vgt instance).
 	*/
-	(void)sscanf(buf, "%63s", param_str);
-	param_cnt = sscanf(param_str, "%d,%d,%d,%d,%d,%d", &vp.vm_id,
+	(void)sscanf(buf, "%127s", param_str);
+	param_cnt = sscanf(param_str, "%d,%d,%d,%d,%d,%d,%d,%lx", &vp.vm_id,
 		&low_gm_sz, &high_gm_sz, &vp.fence_sz, &vp.vgt_primary,
-		&vp.cap);
+		&vp.cap, &vp.is_local, &vp.opregion_gpa);
 	vp.aperture_sz = low_gm_sz;
 	vp.gm_sz = high_gm_sz + low_gm_sz;
+	printk("%s [1]: param_cnt = %d, vp.vm_id = %d, low_gm_sz = %d, "
+	       "high_gm_sz = %d, vp.fence_size = %d, vp.vgt_primary = %d, "
+	       "vp.cap = %d, vp.is_local = %d, vp.opregion_gpa = %#lx\n",
+	       __func__, param_cnt, vp.vm_id, low_gm_sz, high_gm_sz,
+	       vp.fence_sz, vp.vgt_primary, vp.cap, vp.is_local, vp.opregion_gpa);
 
 	if (param_cnt == 1) {
 		if (vp.vm_id >= 0)
 			return -EINVAL;
-	} else if (param_cnt == 4 || param_cnt == 5 || param_cnt == 6) {
+	} else if (param_cnt >= 4 && param_cnt <= 8) {
+		if (param_cnt < 7)
+			vp.is_local = 0;
+		if (param_cnt == 7) {
+			printk("%s: Error: opregion_gpa not set\n", __func__);
+			return -EINVAL;
+		}
+
 		if (!(vp.vm_id > 0 && vp.aperture_sz > 0 &&
 			vp.aperture_sz <= vp.gm_sz && vp.fence_sz > 0))
 			return -EINVAL;
@@ -281,6 +294,199 @@ static ssize_t vgt_virtual_event_trigger(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t vgt_pci_config_store(struct kobject *kobj, struct kobj_attribute *attr,
+			const char *buf, size_t count)
+{
+	int param_cnt;
+	char param_str[64];
+	int type, size, where, val;
+	struct vgt_device *vgt;
+	bool success = true;
+
+	vgt = vmid_2_vgt_device(current->tgid);
+
+	if (!vgt) {
+		PRINTK_ERR("Error: vgt was not found\n");
+		return -EINVAL;
+	}
+
+	(void)sscanf(buf, "%63s", param_str);
+
+	param_cnt = sscanf(param_str, "%d,%d,%d,%d", &type, &size, &where, &val);
+
+	if (param_cnt == 4 && type == 1) { /* write */
+		switch (size) {
+		case 8:
+			success = vgt_emulate_cfg_write(vgt, (unsigned int) where, (void *) &val, 1);
+			break;
+
+		case 16:
+			success = vgt_emulate_cfg_write(vgt, (unsigned int) where, (void *) &val, 2);
+			break;
+
+		case 32:
+			success = vgt_emulate_cfg_write(vgt, (unsigned int) where, (void *) &val, 4);
+			break;
+
+		default:
+			PRINTK_ERR("Error: invalid write size\n");
+			return -EINVAL;
+		}
+	} else if (param_cnt == 3 && type == 0) { /* read */
+		switch (size) {
+		case 8:
+			val = 0;
+			success = vgt_emulate_cfg_read(vgt, (unsigned int) where, (void *) &val, 1);
+			vgt->last_cfg_val = val;
+			break;
+
+		case 16:
+			val = 0;
+			success = vgt_emulate_cfg_read(vgt, (unsigned int) where, (void *) &val, 2);
+			vgt->last_cfg_val = val;
+			break;
+
+		case 32:
+			val = 0;
+			success = vgt_emulate_cfg_read(vgt, (unsigned int) where, (void *) &val, 4);
+			vgt->last_cfg_val = val;
+			break;
+
+		default:
+			PRINTK_ERR("Error: invalid read size\n");
+			return -EINVAL;
+		}
+
+	} else {
+		PRINTK_ERR("Error: invalid parameters\n");
+		return -EINVAL;
+	}
+
+	if (!success) {
+		PRINTK_ERR("Error: emulate_cfg not successful\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static ssize_t vgt_pci_config_show(struct kobject *kobj, struct kobj_attribute *attr,
+			char *buf)
+{
+	struct vgt_device *vgt;
+
+	vgt = vmid_2_vgt_device(current->tgid);
+
+	if (!vgt) {
+		PRINTK_ERR("Error: vgt was not found\n");
+		return 0;
+	}
+	
+	return sprintf(buf,"%d\n", vgt->last_cfg_val);
+}
+
+static ssize_t vgt_mmio_store(struct kobject *kobj, struct kobj_attribute *attr,
+			const char *buf, size_t count)
+{
+	int param_cnt;
+	char param_str[64];
+	int type, size, where;
+	unsigned long val;
+	struct vgt_device *vgt;
+	bool success = true;
+
+	vgt = vmid_2_vgt_device(current->tgid);
+
+	if (!vgt) {
+		PRINTK_ERR("Error: vgt was not found\n");
+		return -EINVAL;
+	}
+
+	(void)sscanf(buf, "%63s", param_str);
+
+	param_cnt = sscanf(param_str, "%d,%d,%d,%lu", &type, &size, &where, &val);
+
+	if (param_cnt == 4 && type == 1) { /* write */
+		switch (size) {
+		case 8:
+			success = vgt_emulate_write(vgt, (unsigned int) where, (void *) &val, 1);
+			break;
+
+		case 16:
+			success = vgt_emulate_write(vgt, (unsigned int) where, (void *) &val, 2);
+			break;
+
+		case 32:
+			success = vgt_emulate_write(vgt, (unsigned int) where, (void *) &val, 4);
+			break;
+
+		case 64:
+			success = vgt_emulate_write(vgt, (unsigned int) where, (void *) &val, 8);
+			break;
+
+		default:
+			PRINTK_ERR("Error: invalid write size\n");
+			return -EINVAL;
+		}
+	} else if (param_cnt == 3 && type == 0) { /* read */
+		switch (size) {
+		case 8:
+			val = 0;
+			success = vgt_emulate_read(vgt, (unsigned int) where, (void *) &val, 1);
+			vgt->last_mmio_val = val;
+			break;
+
+		case 16:
+			val = 0;
+			success = vgt_emulate_read(vgt, (unsigned int) where, (void *) &val, 2);
+			vgt->last_mmio_val = val;
+			break;
+
+		case 32:
+			val = 0;
+			success = vgt_emulate_read(vgt, (unsigned int) where, (void *) &val, 4);
+			vgt->last_mmio_val = val;
+			break;
+
+		case 64:
+			val = 0;
+			success = vgt_emulate_read(vgt, (unsigned int) where, (void *) &val, 8);
+			vgt->last_mmio_val = val;
+			break;
+
+		default:
+			PRINTK_ERR("Error: invalid read size\n");
+			return -EINVAL;
+		}
+
+	} else {
+		PRINTK_ERR("Error: invalid parameters\n");
+		return -EINVAL;
+	}
+
+	if (!success) {
+		PRINTK_ERR("Error: emulate_cfg not successful\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static ssize_t vgt_mmio_show(struct kobject *kobj, struct kobj_attribute *attr,
+			char *buf)
+{
+	struct vgt_device *vgt;
+
+	vgt = vmid_2_vgt_device(current->tgid);
+
+	if (!vgt) {
+		PRINTK_ERR("Error: vgt was not found\n");
+		return 0;
+	}
+	
+	return sprintf(buf,"%lu\n", vgt->last_mmio_val);
+}
+
 static struct kobj_attribute create_vgt_instance_attrs =
 	__ATTR(create_vgt_instance, 0220, NULL, vgt_create_instance_store);
 static struct kobj_attribute display_owner_ctrl_attrs =
@@ -302,6 +508,10 @@ static struct kobj_attribute dpy_switch_attrs =
 
 static struct kobj_attribute available_res_attrs =
 	__ATTR(available_resource, 0440, vgt_available_res_show, NULL);
+static struct kobj_attribute pci_config_attrs =
+	__ATTR(pci_config, 0660, vgt_pci_config_show, vgt_pci_config_store);
+static struct kobj_attribute mmio_attrs =
+	__ATTR(mmio, 0660, vgt_mmio_show, vgt_mmio_store);
 
 static struct attribute *vgt_ctrl_attrs[] = {
 	&create_vgt_instance_attrs.attr,
@@ -312,6 +522,8 @@ static struct attribute *vgt_ctrl_attrs[] = {
 	&validate_ctx_switch_attrs.attr,
 	&dpy_switch_attrs.attr,
 	&available_res_attrs.attr,
+	&pci_config_attrs.attr,
+	&mmio_attrs.attr,
 	NULL,	/* need to NULL terminate the list of attributes */
 };
 

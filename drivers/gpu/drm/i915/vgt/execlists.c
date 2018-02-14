@@ -25,6 +25,7 @@
 
 #include "vgt.h"
 #include "trace.h"
+#include <linux/prints.h>
 
 /* #define EL_SLOW_DEBUG */
 
@@ -711,6 +712,7 @@ static void update_shadow_regstate_from_guest(struct vgt_device *vgt,
 		dest_ctx->ring_tail.val = src_ctx->ring_tail.val;
 		return;
 	}
+
 
 	if (!el_ctx->initialized || (ref_ctx == NULL)) {
 		/* in the first submission, populate shadow context */
@@ -2386,6 +2388,7 @@ bool vgt_batch_ELSP_write(struct vgt_device *vgt, int ring_id)
 		if (rc < 0 && rc != -EBUSY)
 			return false;
 	}
+
 
 	return true;
 }

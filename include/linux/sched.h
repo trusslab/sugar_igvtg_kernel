@@ -1812,6 +1812,7 @@ struct task_struct {
 	unsigned long	task_state_change;
 #endif
 	int pagefault_disabled;
+	int vgt_flag; /* used for debugging */
 /* CPU-specific state of this task */
 	struct thread_struct thread;
 /*

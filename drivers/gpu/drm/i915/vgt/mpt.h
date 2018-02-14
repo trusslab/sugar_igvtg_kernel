@@ -26,29 +26,43 @@
 #ifndef _VGT_MPT_H_
 #define _VGT_MPT_H_
 
+#include <linux/prints.h>
+
 extern struct kernel_dm *vgt_pkdm;
+extern struct kernel_dm *vgt_local_pkdm;
 
 static inline unsigned long hypervisor_g2m_pfn(struct vgt_device *vgt,
 	unsigned long g_pfn)
 {
-	return vgt_pkdm->g2m_pfn(vgt->vm_id, g_pfn);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->g2m_pfn(vgt->vm_id, g_pfn);
+	else
+		return vgt_pkdm->g2m_pfn(vgt->vm_id, g_pfn);
 }
 
 static inline int hypervisor_pause_domain(struct vgt_device *vgt)
 {
-	return vgt_pkdm->pause_domain(vgt->vm_id);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->pause_domain(vgt->vm_id);
+	else
+		return vgt_pkdm->pause_domain(vgt->vm_id);
 }
 
 static inline int hypervisor_shutdown_domain(struct vgt_device *vgt)
 {
-	return vgt_pkdm->shutdown_domain(vgt->vm_id);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->shutdown_domain(vgt->vm_id);
+	else
+		return vgt_pkdm->shutdown_domain(vgt->vm_id);
 }
 
 static inline int hypervisor_map_mfn_to_gpfn(struct vgt_device *vgt,
 	unsigned long gpfn, unsigned long mfn, int nr, int map, enum map_type type)
 {
-	if (vgt_pkdm && vgt_pkdm->map_mfn_to_gpfn)
-		return vgt_pkdm->map_mfn_to_gpfn(vgt->vm_id, gpfn, mfn, nr, map, type);
+	if (vgt && vgt->is_local && vgt_local_pkdm && vgt_local_pkdm->map_mfn_to_gpfn)
+		return vgt_local_pkdm->map_mfn_to_gpfn(vgt, vgt->vm_id, gpfn, mfn, nr, map, type);
+	else if (vgt_pkdm && vgt_pkdm->map_mfn_to_gpfn)
+		return vgt_pkdm->map_mfn_to_gpfn(vgt, vgt->vm_id, gpfn, mfn, nr, map, type);
 
 	return 0;
 }
@@ -56,32 +70,48 @@ static inline int hypervisor_map_mfn_to_gpfn(struct vgt_device *vgt,
 static inline int hypervisor_set_trap_area(struct vgt_device *vgt,
 	uint64_t start, uint64_t end, bool map)
 {
-	return vgt_pkdm->set_trap_area(vgt, start, end, map);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->set_trap_area(vgt, start, end, map);
+	else
+		return vgt_pkdm->set_trap_area(vgt, start, end, map);
 }
 
 static inline int hypervisor_set_wp_pages(struct vgt_device *vgt, guest_page_t *p)
 {
-	return vgt_pkdm->set_wp_pages(vgt, p);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->set_wp_pages(vgt, p);
+	else
+		return vgt_pkdm->set_wp_pages(vgt, p);
 }
 
 static inline int hypervisor_unset_wp_pages(struct vgt_device *vgt, guest_page_t *p)
 {
-	return vgt_pkdm->unset_wp_pages(vgt, p);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->unset_wp_pages(vgt, p);
+	else
+		return vgt_pkdm->unset_wp_pages(vgt, p);
 }
 
 static inline int hypervisor_check_host(void)
 {
 	return vgt_pkdm->check_host();
+	
 }
 
-static inline int hypervisor_virt_to_mfn(void *addr)
+static inline int hypervisor_virt_to_mfn(struct vgt_device *vgt, void *addr)
 {
-	return vgt_pkdm->from_virt_to_mfn(addr);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->from_virt_to_mfn(addr);
+	else
+		return vgt_pkdm->from_virt_to_mfn(addr);
 }
 
-static inline void *hypervisor_mfn_to_virt(int mfn)
+static inline void *hypervisor_mfn_to_virt(struct vgt_device *vgt, int mfn)
 {
-	return vgt_pkdm->from_mfn_to_virt(mfn);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->from_mfn_to_virt(mfn);
+	else
+		return vgt_pkdm->from_mfn_to_virt(mfn);
 }
 
 static inline int hypervisor_inject_msi(struct vgt_device *vgt)
@@ -107,12 +137,17 @@ static inline int hypervisor_inject_msi(struct vgt_device *vgt)
 
 	vgt_dbg(VGT_DBG_IRQ, "vGT: VM(%d): hvm injections. address (%x) data(%x)!\n",
 			vgt->vm_id, addr, data);
-	return vgt_pkdm->inject_msi(vgt, addr, data);
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->inject_msi(vgt, addr, data);
+	else
+		return vgt_pkdm->inject_msi(vgt, addr, data);
 }
 
 static inline int hypervisor_hvm_init(struct vgt_device *vgt)
 {
-	if (vgt_pkdm && vgt_pkdm->hvm_init)
+	if (vgt && vgt->is_local && vgt_local_pkdm && vgt_local_pkdm->hvm_init)
+		return vgt_local_pkdm->hvm_init(vgt);
+	else if (vgt_pkdm && vgt_pkdm->hvm_init)
 		return vgt_pkdm->hvm_init(vgt);
 
 	return 0;
@@ -120,16 +155,22 @@ static inline int hypervisor_hvm_init(struct vgt_device *vgt)
 
 static inline void hypervisor_hvm_exit(struct vgt_device *vgt)
 {
-	if (vgt_pkdm && vgt_pkdm->hvm_exit)
+	if (vgt && vgt->is_local && vgt_local_pkdm && vgt_local_pkdm->hvm_exit)
+		vgt_local_pkdm->hvm_exit(vgt);
+	else if (vgt_pkdm && vgt_pkdm->hvm_exit)
 		vgt_pkdm->hvm_exit(vgt);
 }
 
 static inline void *hypervisor_gpa_to_va(struct vgt_device *vgt, unsigned long gpa)
 {
-	if (!vgt->vm_id)
-		return (char *)hypervisor_mfn_to_virt(gpa >> PAGE_SHIFT) + offset_in_page(gpa);
 
-	return vgt_pkdm->gpa_to_va(vgt, gpa);
+	if (!vgt->vm_id)
+		return (char *)hypervisor_mfn_to_virt(vgt, gpa >> PAGE_SHIFT) + offset_in_page(gpa);
+
+	if (vgt && vgt->is_local)
+		return vgt_local_pkdm->gpa_to_va(vgt, gpa);
+	else
+		return vgt_pkdm->gpa_to_va(vgt, gpa);
 }
 
 static inline bool hypervisor_read_va(struct vgt_device *vgt, void *va,
@@ -142,7 +183,10 @@ static inline bool hypervisor_read_va(struct vgt_device *vgt, void *va,
 		return true;
 	}
 
-	ret = vgt_pkdm->read_va(vgt, va, val, len, atomic);
+	if (vgt && vgt->is_local)
+		ret = vgt_local_pkdm->read_va(vgt, va, val, len, atomic);
+	else
+		ret = vgt_pkdm->read_va(vgt, va, val, len, atomic);
 	if (unlikely(!ret))
 		vgt_err("VM(%d): read va failed, va: 0x%p, atomic : %s\n", vgt->vm_id,
 				va, atomic ? "yes" : "no");
@@ -160,7 +204,10 @@ static inline bool hypervisor_write_va(struct vgt_device *vgt, void *va,
 		return true;
 	}
 
-	ret = vgt_pkdm->write_va(vgt, va, val, len, atomic);
+	if (vgt && vgt->is_local)
+		ret = vgt_local_pkdm->write_va(vgt, va, val, len, atomic);
+	else
+		ret = vgt_pkdm->write_va(vgt, va, val, len, atomic);
 	if (unlikely(!ret))
 		vgt_err("VM(%d): write va failed, va: 0x%p, atomic : %s\n", vgt->vm_id,
 				va, atomic ? "yes" : "no");

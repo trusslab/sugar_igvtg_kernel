@@ -2897,6 +2897,7 @@ int insert_vm_struct(struct mm_struct *mm, struct vm_area_struct *vma)
 	vma_link(mm, vma, prev, rb_link, rb_parent);
 	return 0;
 }
+EXPORT_SYMBOL(insert_vm_struct);
 
 /*
  * Copy the vma structure to a new location in the same mm,

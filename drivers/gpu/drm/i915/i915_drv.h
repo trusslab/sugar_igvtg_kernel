@@ -2880,6 +2880,10 @@ int i915_gem_madvise_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *file_priv);
 int i915_gem_vgtbuffer_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *file);
+int i915_gem_pinpages_ioctl(struct drm_device *dev, void *data,
+			     struct drm_file *file);
+int i915_gem_vgt_dmabuf_ioctl(struct drm_device *dev, void *data,
+			     struct drm_file *file);
 int i915_gem_set_tiling(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
 int i915_gem_get_tiling(struct drm_device *dev, void *data,

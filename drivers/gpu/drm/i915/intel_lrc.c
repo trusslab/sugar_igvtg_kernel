@@ -137,6 +137,7 @@
 #include "i915_drv.h"
 #include "i915_vgpu.h"
 #include "intel_mocs.h"
+#include <linux/prints.h>
 
 #define GEN9_LR_CONTEXT_RENDER_SIZE (22 * PAGE_SIZE)
 #define GEN8_LR_CONTEXT_RENDER_SIZE (20 * PAGE_SIZE)
@@ -865,6 +866,41 @@ int intel_logical_ring_reserve_space(struct drm_i915_gem_request *request)
 	return intel_logical_ring_begin(request, 0);
 }
 
+void print_batch_buffer(struct drm_i915_gem_object *batch_obj, __u32 batch_len, bool full)
+{
+	u32 *vaddr;
+	int i;
+	struct page *page;
+	struct i915_vma *vma;
+
+	if (batch_len > PAGE_SIZE) {
+		PRINTK_ERR("Error: printing large batch buffers not supported\n");
+		return;
+	}
+
+	page = i915_gem_object_get_page(batch_obj, 0);
+	vaddr = kmap(page);
+
+	if (!full) {
+		i = 0x480;
+		kunmap(page);
+		return;
+	}
+
+	kunmap(page);
+
+	list_for_each_entry(vma, &batch_obj->vma_list, exec_list) {
+		if (vma) {
+		}
+	}
+
+	page = i915_gem_object_get_page(batch_obj, 7);
+	vaddr = kmap(page);
+	i = 0xec0;
+
+	kunmap(page);
+}
+
 /**
  * execlists_submission() - submit a batchbuffer for execution, Execlists style
  * @dev: DRM device.
@@ -947,6 +983,12 @@ int intel_execlists_submission(struct i915_execbuffer_params *params,
 
 	exec_start = params->batch_obj_vm_offset +
 		     args->batch_start_offset;
+
+	if (args->batch_len == 0x550) {
+		if (params->request->ctx->ppgtt) {
+		}
+		print_batch_buffer(params->batch_obj, args->batch_len, true);
+	}
 
 	ret = ring->emit_bb_start(params->request, exec_start, params->dispatch_flags);
 	if (ret)

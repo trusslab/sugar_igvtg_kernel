@@ -49,6 +49,7 @@
 #include <asm/bios_ebda.h>
 #include <asm/x86_init.h>
 #include <asm/iommu_table.h>
+#include <linux/prints.h>
 
 #ifdef CONFIG_CALGARY_IOMMU_ENABLED_BY_DEFAULT
 int use_calgary __read_mostly = 1;

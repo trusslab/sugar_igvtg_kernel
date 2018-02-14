@@ -240,7 +240,7 @@ retry:
 	return rc;
 }
 
-static int xen_map_mfn_to_gpfn(int vm_id, unsigned long gpfn,
+static int xen_map_mfn_to_gpfn(struct vgt_device *vgt, int vm_id, unsigned long gpfn,
 	unsigned long mfn, int nr, int map, enum map_type type)
 {
 	int rc;

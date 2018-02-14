@@ -24,6 +24,8 @@
  */
 
 #include "vgt.h"
+#include <linux/kvm_host.h>
+#include <linux/prints.h>
 
 /*
  * bitmap of allocated vgt_ids.
@@ -117,9 +119,10 @@ int create_vgt_instance(struct pgt_device *pdev, struct vgt_device **ptr_vgt, vg
 	int i;
 
 	vgt_info("vm_id=%d, low_gm_sz=%dMB, high_gm_sz=%dMB, fence_sz=%d,"
-					"vgt_primary=%d, vgt_cap=%d\n",
+					"vgt_primary=%d, vgt_cap=%d,"
+		 "is_local = %d, opregion_gpa = %#lx\n",
 		vp.vm_id, vp.aperture_sz, vp.gm_sz-vp.aperture_sz, vp.fence_sz,
-					vp.vgt_primary, vp.cap);
+			vp.vgt_primary, vp.cap, vp.is_local, vp.opregion_gpa);
 	vgt = vzalloc(sizeof(*vgt));
 	if (vgt == NULL) {
 		printk("Insufficient memory for vgt_device in %s\n", __FUNCTION__);
@@ -136,6 +139,18 @@ int create_vgt_instance(struct pgt_device *pdev, struct vgt_device **ptr_vgt, vg
 
 	vgt->vm_id = vp.vm_id;
 	vgt->pdev = pdev;
+	vgt->is_local = vp.is_local;
+	vgt->pdev->is_local = vgt->is_local;
+	vgt->opregion_gpa = vp.opregion_gpa;
+	/* The ones that are local-specific should not be set when non-local vgt is created. */
+	vgt->pci_config_base_addr = 0;
+	vgt->local_mm = current->mm;
+	vgt->local_task = current;
+	vgt->emulate_ctxt = kmalloc(sizeof(struct x86_emulate_ctxt), GFP_KERNEL);
+	if (!vgt->emulate_ctxt) {
+		PRINTK_ERR("Error: could not allocate memory for vgt emulate_ctx\n");
+		goto err2;
+	}
 
 	vgt->force_removal = 0;
 
@@ -191,6 +206,7 @@ int create_vgt_instance(struct pgt_device *pdev, struct vgt_device **ptr_vgt, vg
 	vgt_pci_bar_write_32(vgt, VGT_REG_CFG_SPACE_BAR1, phys_aperture_base(pdev) );
 
 	/* mark HVM's GEN device's IO as Disabled. hvmloader will enable it */
+
 	if (vgt->vm_id != 0) {
 		cfg_space[VGT_REG_CFG_COMMAND] &= ~(_REGBIT_CFG_COMMAND_IO |
 						_REGBIT_CFG_COMMAND_MEMORY |

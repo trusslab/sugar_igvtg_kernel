@@ -1427,6 +1427,7 @@ static bool dpy_plane_ctl_write(struct vgt_device *vgt, unsigned int offset,
 	return rc;
 }
 
+int write_counter = 0;
 
 static bool pri_surf_mmio_write(struct vgt_device *vgt, unsigned int offset,
 	void *p_data, unsigned int bytes)

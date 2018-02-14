@@ -27,6 +27,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include "vgt.h"
+#include <linux/prints.h>
 
 /*
  * NOTE list:
@@ -66,6 +67,7 @@ static bool ring_is_xxx(struct pgt_device *pdev,
 /* make a render engine idle */
 bool idle_render_engine(struct pgt_device *pdev, int id)
 {
+	dump_stack();
 	if (wait_for_atomic(ring_is_empty(pdev, id), VGT_RING_TIMEOUT) != 0) {
 		int i, busy = 1;
 		vgt_reg_t acthd1, acthd2;
@@ -686,7 +688,6 @@ bool vgt_do_render_context_switch(struct pgt_device *pdev)
 	}
 
 	vgt_dbg(VGT_DBG_RENDER, "vGT: next vgt (%d)\n", next->vgt_id);
-	
 
 	/* variable exported by debugfs */
 	pdev->stat.context_switch_num ++;

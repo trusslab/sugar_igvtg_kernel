@@ -1061,6 +1061,7 @@ static inline unsigned long vgt_get_gma_from_bb_start(
 	return bb_start_gma;
 }
 
+
 static uint32_t vgt_find_bb_size(struct vgt_device *vgt,
 				 struct vgt_mm *mm,
 				 int ring_id,
@@ -1079,6 +1080,7 @@ static uint32_t vgt_find_bb_size(struct vgt_device *vgt,
 		return 0;
 	max_bb_size = (g_gm_is_visible(vgt, gma) ? vgt_guest_visible_gm_end(vgt)
 			: vgt_guest_hidden_gm_end(vgt)) - gma;
+
 	do {
 		uint32_t cmd;
 		uint32_t cmd_length;
@@ -1921,6 +1923,7 @@ static int vgt_perform_bb_shadow(struct parser_exec_state *s)
 		hypervisor_read_va(vgt, guest_bb_va, shadow_bb_va,
 				   PAGE_SIZE, 1);
 
+
 		shadow_hpa += PAGE_SIZE;
 		bb_guest_gma += PAGE_SIZE;
 	}
@@ -1938,6 +1941,7 @@ shadow_err:
 		       s->ip_gma, cmd_val(s, 0), cmd_val(s, 1), cmd_val(s, 2));
 	return -1;
 }
+
 
 static int vgt_cmd_handler_mi_batch_buffer_start(struct parser_exec_state *s)
 {

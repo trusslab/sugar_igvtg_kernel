@@ -257,7 +257,7 @@ static unsigned long gen8_gtt_get_pfn(gtt_entry_t *e)
 	else if (e->type == GTT_TYPE_PPGTT_PTE_2M_ENTRY)
 		return (e->val64 & (0x3ffff << 21)) >> 12;
 	else
-		return (e->val64 >> 12) & 0x7ffffff;
+		return (e->val64 >> 12);
 }
 
 static void gen8_gtt_set_pfn(gtt_entry_t *e, unsigned long pfn)
@@ -634,7 +634,7 @@ static inline bool vgt_init_shadow_page(struct vgt_device *vgt,
 	memset(sp->vaddr, 0, PAGE_SIZE);
 
 	INIT_HLIST_NODE(&sp->node);
-	sp->mfn = hypervisor_virt_to_mfn(sp->vaddr);
+	sp->mfn = hypervisor_virt_to_mfn(vgt, sp->vaddr);
 	hash_add(vgt->gtt.shadow_page_hash_table, &sp->node, sp->mfn);
 
 	return true;
@@ -1701,14 +1701,14 @@ static inline bool ppgtt_get_next_level_entry(struct vgt_mm *mm,
 		else
 			ppgtt_get_guest_entry(s, e, index);
 	} else {
-		pt = hypervisor_mfn_to_virt(ops->get_pfn(e));
+		pt = hypervisor_mfn_to_virt(vgt, ops->get_pfn(e));
 		ops->get_entry(pt, e, index, false, NULL);
 		e->type = get_entry_type(get_next_pt_type(e->type));
 	}
 	return true;
 }
 
-static inline unsigned long vgt_gma_to_gpa(struct vgt_mm *mm, unsigned long gma)
+inline unsigned long vgt_gma_to_gpa(struct vgt_mm *mm, unsigned long gma)
 {
 	struct vgt_device *vgt = mm->vgt;
 	struct pgt_device *pdev = vgt->pdev;
@@ -2137,7 +2137,7 @@ bool vgt_create_scratch_page(struct vgt_device *vgt)
 
 	/* translate page to mfn */
 	vaddr = page_address(gtt->scratch_page);
-	mfn = hypervisor_virt_to_mfn(vaddr);
+	mfn = hypervisor_virt_to_mfn(vgt, vaddr);
 
 	if (mfn == INVALID_MFN) {
 		vgt_err("fail to translate vaddr:0x%llx\n", (u64)vaddr);

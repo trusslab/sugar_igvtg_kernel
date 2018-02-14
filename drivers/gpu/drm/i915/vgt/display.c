@@ -29,6 +29,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include "vgt.h"
+#include <linux/prints.h>
 
 static void vgt_restore_sreg(struct vgt_device *vgt,unsigned int reg)
 {
@@ -191,10 +192,11 @@ void do_vgt_fast_display_switch(struct pgt_device *pdev)
 	ASSERT(fastpath_dpy_switch);
 	ASSERT(spin_is_locked(&pdev->lock));
 
-	if (IS_SKLPLUS(pdev))
+	if (IS_SKLPLUS(pdev)) {
 		skl_do_vgt_fast_display_switch(pdev);
-	else
+	} else {
 		legacy_do_vgt_fast_display_switch(pdev);
+	}
 
 	current_foreground_vm(pdev) = to_vgt;
 }

@@ -30,7 +30,7 @@
 
 #include "kvmgt.h"
 #include "vgt.h"
-
+#include <linux/prints.h>
 
 struct kvmgt_trap_info {
 	u64 base_addr;
@@ -609,7 +609,7 @@ static bool kvmgt_opregion_init(struct vgt_device *vgt)
 	return true;
 }
 
-static int kvmgt_map_mfn_to_gpfn(int vm_id, unsigned long gpfn,
+static int kvmgt_map_mfn_to_gpfn(struct vgt_device *_vgt, int vm_id, unsigned long gpfn,
 			unsigned long mfn, int nr, int map, enum map_type type)
 {
 	struct kvm *kvm = NULL;
@@ -629,6 +629,7 @@ static int kvmgt_map_mfn_to_gpfn(int vm_id, unsigned long gpfn,
 	switch (type) {
 	case VGT_MAP_APERTURE:
 		if (kvm->aperture_hpa == 0) {
+			dump_stack();
 			if (kvmgt_add_apt_slot(vgt, mfn, gpfn, nr,
 							(u64)vgt_aperture_vbase(vgt))) {
 				r = 0;

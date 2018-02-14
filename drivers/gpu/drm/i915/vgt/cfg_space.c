@@ -25,6 +25,7 @@
 
 
 #include "vgt.h"
+#include <linux/prints.h>
 
 typedef union _SCI_REG_DATA{
 	uint16_t data;
@@ -343,6 +344,8 @@ bool vgt_emulate_cfg_write(struct vgt_device *vgt, unsigned int off,
 			break;
 
 		case VGT_REG_CFG_OPREGION:
+			if (vgt->is_local && bytes < 8)
+				BUG();
 			new = *(uint32_t *)p_data;
 			if (vgt->vm_id == 0) {
 				/* normally domain 0 shouldn't write this reg */

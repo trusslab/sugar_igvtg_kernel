@@ -29,6 +29,7 @@
 
 #include "x86.h"
 #include "tss.h"
+#include <linux/prints.h>
 
 /*
  * Operand types
@@ -5021,6 +5022,7 @@ done_prefixes:
 done:
 	return (rc != X86EMUL_CONTINUE) ? EMULATION_FAILED : EMULATION_OK;
 }
+EXPORT_SYMBOL(x86_decode_insn);
 
 bool x86_page_table_writing_insn(struct x86_emulate_ctxt *ctxt)
 {

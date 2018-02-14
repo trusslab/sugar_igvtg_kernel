@@ -185,6 +185,8 @@ typedef struct {
 
 	int vgt_primary; /* 0/1: config the vgt device as secondary/primary VGA,
 						-1: means the ioemu doesn't supply a value */
+	int is_local; /* vGPU used within the OS and not for a virtual machine */
+	unsigned long opregion_gpa; /* Used for local case */
 } vgt_params_t;
 
 struct vgt_device;

@@ -39,6 +39,7 @@
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
 #include <drm/drm_crtc_helper.h>
+#include <linux/prints.h>
 
 bool i915_host_mediate __read_mostly = false;
 
@@ -1811,9 +1812,14 @@ static struct pci_driver i915_pci_driver = {
 	.driver.pm = &i915_pm_ops,
 };
 
+extern struct vm_operations_struct *g_gem_vm_ops;
+
 static int __init i915_init(void)
 {
 	driver.num_ioctls = i915_max_ioctl;
+
+
+	g_gem_vm_ops = &i915_gem_vm_ops;
 
 	/*
 	 * Enable KMS by default, unless explicitly overriden by

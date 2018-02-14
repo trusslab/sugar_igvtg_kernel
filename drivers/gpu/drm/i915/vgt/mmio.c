@@ -31,6 +31,7 @@
 
 #define CREATE_TRACE_POINTS
 #include "trace.h"
+#include <linux/prints.h>
 
 DEFINE_HASHTABLE(vgt_mmio_table, VGT_HASH_BITS);
 
@@ -170,6 +171,11 @@ static int vgt_update_reg(struct vgt_device *vgt, unsigned int reg)
 {
 	struct pgt_device *pdev = vgt->pdev;
 	int ret = 0;
+	bool cond = false;
+	if ((reg == 0x2080 || reg == 0x12080 || reg == 0x22080 || reg == 0x1a080 ||
+	    reg == 0x1c080) && vgt->is_local) {
+		cond = true;
+	}
 	/*
 	 * update sreg if pass through;
 	 * update preg if boot_time or vgt is reg's cur owner
@@ -181,8 +187,9 @@ static int vgt_update_reg(struct vgt_device *vgt, unsigned int reg)
 		return ret;
 	}
 
-	if (reg_hw_access(vgt, reg))
+	if (reg_hw_access(vgt, reg)) {
 		VGT_MMIO_WRITE(pdev, reg, __sreg(vgt, reg));
+	}
 
 	return 0;
 }
@@ -237,6 +244,11 @@ bool default_mmio_write(struct vgt_device *vgt, unsigned int offset,
 	void *p_data, unsigned int bytes)
 {
 	int ret;
+	bool cond = false;
+	if ((offset == 0x2080 || offset == 0x12080 || offset == 0x22080 || offset == 0x1a080 ||
+	    offset == 0x1c080) && vgt->is_local) {
+		cond = true;
+	}
 	memcpy((char *)vgt->state.vReg + offset,
 			p_data, bytes);
 
@@ -428,6 +440,7 @@ err_mmio:
 	return false;
 }
 
+
 /*
  * Emulate the VGT MMIO register write ops.
  * Return : true/false
@@ -445,6 +458,7 @@ bool vgt_emulate_write(struct vgt_device *vgt, uint64_t pa,
 	cycles_t t0, t1;
 	struct vgt_statistics *stat = &vgt->stat;
 	unsigned char *va;
+
 
 	vgt_lock_dev_flags(pdev, cpu, flags);
 
@@ -515,9 +529,10 @@ bool vgt_emulate_write(struct vgt_device *vgt, uint64_t pa,
 			goto err_mmio;
 		if (!mht->write(vgt, offset, p_data, bytes))
 			goto err_mmio;
-	} else
+	} else {
 		if (!default_mmio_write(vgt, offset, p_data, bytes))
 			goto err_mmio;
+	}
 
 	/* higher 16bits of mode ctl regs are mask bits for change */
 	if (reg_mode_ctl(pdev, offset)) {
@@ -564,6 +579,7 @@ static bool vgt_hvm_opregion_resinit(struct vgt_device *vgt, uint32_t gpa)
 	void *orig_va = vgt->pdev->opregion_va;
 	uint8_t	*buf;
 	int i;
+	
 
 	if (vgt->state.opregion_va) {
 		vgt_err("VM%d tried to init opregion multiple times!\n",
@@ -599,6 +615,7 @@ static bool vgt_hvm_opregion_resinit(struct vgt_device *vgt, uint32_t gpa)
 	return true;
 }
 
+
 int vgt_hvm_opregion_map(struct vgt_device *vgt, int map)
 {
 	void *opregion;
@@ -610,7 +627,7 @@ int vgt_hvm_opregion_map(struct vgt_device *vgt, int map)
 	for (i = 0; i < VGT_OPREGION_PAGES; i++) {
 		rc = hypervisor_map_mfn_to_gpfn(vgt,
 			vgt->state.opregion_gfn[i],
-			hypervisor_virt_to_mfn(opregion + i*PAGE_SIZE),
+			hypervisor_virt_to_mfn(vgt, opregion + i*PAGE_SIZE),
 			1,
 			map,
 			VGT_MAP_OPREGION);

@@ -39,6 +39,11 @@ int mmio_g2h_gmadr(struct vgt_device *vgt, unsigned long reg,
 	vgt_reg_t mask;
 	uint32_t size;
 	int ret = 0;
+	bool cond = false;
+	if (reg == 0x2080 || reg == 0x12080 || reg == 0x22080 || reg == 0x1a080 ||
+	    reg == 0x1c080) {
+		cond = true;
+	}
 
 	if (!reg_addr_fix(pdev, reg)) {
 		*h_value = g_value;

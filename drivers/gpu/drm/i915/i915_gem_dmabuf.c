@@ -26,6 +26,7 @@
 #include <drm/drmP.h>
 #include "i915_drv.h"
 #include <linux/dma-buf.h>
+#include <linux/prints.h>
 
 static struct drm_i915_gem_object *dma_buf_to_obj(struct dma_buf *buf)
 {
@@ -43,6 +44,7 @@ static struct sg_table *i915_gem_map_dma_buf(struct dma_buf_attachment *attachme
 	ret = i915_mutex_lock_interruptible(obj->base.dev);
 	if (ret)
 		goto err;
+
 
 	ret = i915_gem_object_get_pages(obj);
 	if (ret)
@@ -67,6 +69,17 @@ static struct sg_table *i915_gem_map_dma_buf(struct dma_buf_attachment *attachme
 		sg_set_page(dst, sg_page(src), src->length, 0);
 		dst = sg_next(dst);
 		src = sg_next(src);
+	}
+
+	struct scatterlist *sg;
+	i = 0;
+	for_each_sg(obj->pages->sgl, sg, obj->pages->nents, i) {
+		phys_addr_t paddr = sg_phys(sg);
+	}
+
+	i = 0;
+	for_each_sg(st->sgl, sg, obj->pages->nents, i) {
+		phys_addr_t paddr = sg_phys(sg);
 	}
 
 	if (!dma_map_sg(attachment->dev, st->sgl, st->nents, dir)) {

@@ -26,6 +26,7 @@
 #include "i915_trace.h"
 #include "intel_drv.h"
 #include <linux/swap.h>
+#include <linux/prints.h>
 
 bool enable_vgtbuffer = false;
 module_param_named(enable_vgtbuffer, enable_vgtbuffer, bool, 0600);
@@ -68,6 +69,7 @@ i915_create_sg_pages_for_vgtbuffer(struct drm_device *dev,
 	struct sg_table *st;
 	struct scatterlist *sg;
 	int i;
+	current->vgt_flag = 1;
 
 	st = kmalloc(sizeof(*st), GFP_KERNEL);
 	if (st == NULL)
@@ -88,6 +90,7 @@ i915_create_sg_pages_for_vgtbuffer(struct drm_device *dev,
 			sg_dma_address(sg) =
 				GEN8_DECODE_PTE(readq(&gtt_entries[i]));
 			sg_dma_len(sg) = PAGE_SIZE;
+			sg_assign_page(sg, pfn_to_page(__phys_to_pfn(sg_dma_address(sg))));
 		}
 	} else {
 		gen6_pte_t __iomem *gtt_entries =

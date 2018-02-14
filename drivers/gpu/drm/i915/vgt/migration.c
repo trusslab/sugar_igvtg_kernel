@@ -750,6 +750,8 @@ static int vcfg_space_load(const vgt_migration_obj_t *obj)
 	MIG_CFG_SPACE_WRITE_BAR(VGT_REG_CFG_SPACE_BAR1);
 	MIG_CFG_SPACE_WRITE_BAR(VGT_REG_CFG_SPACE_BAR2);
 
+	if (vgt->is_local)
+		BUG();
 	/* restore OpRegion */
 	MIG_CFG_SPACE_WRITE(VGT_REG_CFG_OPREGION);
 	MIG_CFG_SPACE_WRITE(VGT_REG_CFG_SWSCI_TRIGGER);

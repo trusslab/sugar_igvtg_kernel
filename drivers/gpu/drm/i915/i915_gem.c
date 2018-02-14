@@ -37,6 +37,7 @@
 #include <linux/swap.h>
 #include <linux/pci.h>
 #include <linux/dma-buf.h>
+#include <linux/prints.h>
 
 #define RQ_BUG_ON(expr)
 
@@ -1743,7 +1744,15 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
  */
 int i915_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
+	if (!vma) {
+		PRINTK_ERR("Error: vma is NULL\n");
+		return VM_FAULT_SIGBUS;
+	}
 	struct drm_i915_gem_object *obj = to_intel_bo(vma->vm_private_data);
+	if (!obj) {
+		PRINTK_ERR("Error: obj is NULL\n");
+		return VM_FAULT_SIGBUS;
+	}
 	struct drm_device *dev = obj->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct i915_ggtt_view view = i915_ggtt_view_normal;

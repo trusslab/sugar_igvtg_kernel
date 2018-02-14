@@ -37,6 +37,7 @@
 #include <linux/init.h>
 #include <linux/bootmem.h>
 #include <linux/iommu-helper.h>
+#include <linux/prints.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/swiotlb.h>

@@ -25,6 +25,11 @@
 #define CREATE_TRACE_POINTS
 #include <asm/trace/exceptions.h>
 
+int (*vgt_local_access_check)(unsigned long address, unsigned long error_code,
+			      struct vm_area_struct *vma, int is_user_addr,
+			      struct pt_regs *regs);
+EXPORT_SYMBOL(vgt_local_access_check);
+
 /*
  * Page fault error code bits:
  *
@@ -1092,6 +1097,9 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 * protection error (error_code & 9) == 0.
 	 */
 	if (unlikely(fault_in_kernel_space(address))) {
+		if (vgt_local_access_check &&
+		    !(*vgt_local_access_check)(address, error_code, NULL, 0, regs))
+			return;
 		if (!(error_code & (PF_RSVD | PF_USER | PF_PROT))) {
 			if (vmalloc_fault(address) >= 0)
 				return;
@@ -1193,14 +1201,40 @@ retry:
 
 	vma = find_vma(mm, address);
 	if (unlikely(!vma)) {
+		if (vgt_local_access_check) {
+			switch ((*vgt_local_access_check)(address, error_code, vma, 1, regs)) {
+			case 0:
+				break;
+			case 0x2:
+				up_read(&mm->mmap_sem);
+				goto no_fault_handle;
+			default:
+				bad_area(regs, error_code, address);
+				return;
+			}
+		} else {
 		bad_area(regs, error_code, address);
 		return;
+		}
 	}
 	if (likely(vma->vm_start <= address))
 		goto good_area;
 	if (unlikely(!(vma->vm_flags & VM_GROWSDOWN))) {
+		if (vgt_local_access_check) {
+			switch ((*vgt_local_access_check)(address, error_code, vma, 1, regs)) {
+			case 0:
+				break;
+			case 0x2:
+				up_read(&mm->mmap_sem);
+				goto no_fault_handle;
+			default:
+				bad_area(regs, error_code, address);
+				return;
+			}
+		} else {
 		bad_area(regs, error_code, address);
 		return;
+		}
 	}
 	if (error_code & PF_USER) {
 		/*
@@ -1225,8 +1259,27 @@ retry:
 	 */
 good_area:
 	if (unlikely(access_error(error_code, vma))) {
+		if (vgt_local_access_check) {
+			switch ((*vgt_local_access_check)(address, error_code, vma, 1, regs)) {
+			case 0:
+				break;
+			case 0x2:
+				up_read(&mm->mmap_sem);
+				goto no_fault_handle;
+			default:
+				bad_area_access_error(regs, error_code, address);		
+				return;
+			}
+		} else {
 		bad_area_access_error(regs, error_code, address);
 		return;
+		}
+	}
+	else if (vgt_local_access_check) {
+		if ((*vgt_local_access_check)(address, error_code, vma, 1, regs) == 0x2) {
+			up_read(&mm->mmap_sem);
+			goto no_fault_handle;
+		}
 	}
 
 	/*
@@ -1279,6 +1332,7 @@ good_area:
 		perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS_MIN, 1, regs, address);
 	}
 
+no_fault_handle:
 	check_v8086_mode(regs, address, tsk);
 }
 NOKPROBE_SYMBOL(__do_page_fault);

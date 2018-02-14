@@ -25,6 +25,7 @@
 
 #include "vgt.h"
 #include "trace.h"
+#include <linux/prints.h>
 
 /* Lets move context scheduler specific parameters here */
 bool timer_based_qos = true;

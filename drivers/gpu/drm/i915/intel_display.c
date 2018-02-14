@@ -45,6 +45,7 @@
 #include <drm/drm_rect.h>
 #include <linux/dma_remapping.h>
 #include "i915_vgpu.h"
+#include <linux/prints.h>
 
 /* Primary plane formats for gen <= 3 */
 static const uint32_t i8xx_primary_formats[] = {

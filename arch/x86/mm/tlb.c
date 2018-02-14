@@ -240,6 +240,24 @@ void flush_tlb_page(struct vm_area_struct *vma, unsigned long start)
 	preempt_enable();
 }
 
+void flush_tlb_page_mm(struct mm_struct *mm, unsigned long start)
+{
+	preempt_disable();
+
+	if (current->active_mm == mm) {
+		if (current->mm)
+			__flush_tlb_one(start);
+		else
+			leave_mm(smp_processor_id());
+	}
+
+	if (cpumask_any_but(mm_cpumask(mm), smp_processor_id()) < nr_cpu_ids)
+		flush_tlb_others(mm_cpumask(mm), mm, start, 0UL);
+
+	preempt_enable();
+}
+EXPORT_SYMBOL(flush_tlb_page_mm);
+
 static void do_flush_tlb_all(void *info)
 {
 	count_vm_tlb_event(NR_TLB_REMOTE_FLUSH_RECEIVED);
@@ -253,6 +271,7 @@ void flush_tlb_all(void)
 	count_vm_tlb_event(NR_TLB_REMOTE_FLUSH);
 	on_each_cpu(do_flush_tlb_all, NULL, 1);
 }
+EXPORT_SYMBOL(flush_tlb_all);
 
 static void do_kernel_range_flush(void *info)
 {

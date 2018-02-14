@@ -40,6 +40,7 @@
 #include <drm/drm_vma_manager.h>
 #include <drm/drm_gem.h>
 #include "drm_internal.h"
+#include <linux/prints.h>
 
 /** @file drm_gem.c
  *
@@ -843,6 +844,8 @@ EXPORT_SYMBOL(drm_gem_vm_close);
  * Return 0 or success or -EINVAL if the object size is smaller than the VMA
  * size, or if no gem_vm_ops are provided.
  */
+struct vm_operations_struct *g_gem_vm_ops;
+EXPORT_SYMBOL(g_gem_vm_ops);
 int drm_gem_mmap_obj(struct drm_gem_object *obj, unsigned long obj_size,
 		     struct vm_area_struct *vma)
 {
@@ -856,7 +859,10 @@ int drm_gem_mmap_obj(struct drm_gem_object *obj, unsigned long obj_size,
 		return -EINVAL;
 
 	vma->vm_flags |= VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP;
-	vma->vm_ops = dev->driver->gem_vm_ops;
+	if (current->vgt_flag == 1)
+		vma->vm_ops = g_gem_vm_ops;
+	else
+		vma->vm_ops = dev->driver->gem_vm_ops;
 	vma->vm_private_data = obj;
 	vma->vm_page_prot = pgprot_writecombine(vm_get_page_prot(vma->vm_flags));
 
@@ -895,8 +901,6 @@ int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct drm_vma_offset_node *node;
 	int ret;
 
-	if (drm_device_is_unplugged(dev))
-		return -ENODEV;
 
 	drm_vma_offset_lock_lookup(dev->vma_offset_manager);
 	node = drm_vma_offset_exact_lookup_locked(dev->vma_offset_manager,

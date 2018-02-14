@@ -122,7 +122,6 @@ static bool smp_no_nmi_ipi = false;
 static void native_smp_send_reschedule(int cpu)
 {
 	if (unlikely(cpu_is_offline(cpu))) {
-		WARN_ON(1);
 		return;
 	}
 	apic->send_IPI_mask(cpumask_of(cpu), RESCHEDULE_VECTOR);

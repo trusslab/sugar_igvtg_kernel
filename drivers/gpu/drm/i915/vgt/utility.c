@@ -30,6 +30,7 @@
 #include "vgt.h"
 #include <drm/intel-gtt.h>
 #include <asm/cacheflush.h>
+#include <linux/prints.h>
 
 bool inline is_execlist_mode(struct pgt_device *pdev, int ring_id)
 {
@@ -212,7 +213,9 @@ void show_mode_settings(struct pgt_device *pdev)
 	SHOW_MODE(TILECTL);
 }
 
-static void show_batchbuffer(struct pgt_device *pdev, int ring_id, u64 addr,
+unsigned long vgt_gma_to_gpa(struct vgt_mm *mm, unsigned long gma);
+
+void show_batchbuffer(struct pgt_device *pdev, int ring_id, u64 addr,
 	int bytes, int ppgtt)
 {
 	struct vgt_device_info *info = &pdev->device_info;
@@ -441,6 +444,7 @@ void common_show_ring_buffer(struct pgt_device *pdev, int ring_id, int bytes,
 			ppgtt);
 	}
 
+
 	if (pdev->cur_reset_vm == current_render_owner(pdev))
 		mmio_show_batchbuffer(pdev, ring_id, bytes);
 
@@ -489,6 +493,7 @@ void execlist_show_ring_buffer(struct pgt_device *pdev, int ring_id, int bytes)
 
 	if (!val)
 		return;
+
 
 	p = vgt_gma_to_va(vgt->gtt.ggtt_mm, val + 4096);
 	if (!p)
@@ -1059,6 +1064,7 @@ void vgt_print_dpcd(struct vgt_dpcd_data *dpcd)
 		printk("DPCD is not available!\n");
 	}
 }
+
 
 int vgt_hvm_map_aperture (struct vgt_device *vgt, int map)
 {

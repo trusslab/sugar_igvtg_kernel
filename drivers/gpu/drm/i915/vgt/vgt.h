@@ -36,6 +36,7 @@
 #include <linux/pci.h>
 #include <linux/mempool.h>
 #include <drm/drmP.h>
+#include <linux/prints.h>
 
 typedef uint32_t vgt_reg_t;
 struct pgt_device;
@@ -169,7 +170,7 @@ extern bool logd_enable;
 #define REG_SIZE			sizeof(vgt_reg_t)		/* size of gReg/sReg[0] */
 #define REG_INDEX(reg)		((reg) / REG_SIZE)
 #define VGT_MMIO_SPACE_SZ	(2*SIZE_1MB)
-#define VGT_CFG_SPACE_SZ	256
+#define VGT_CFG_SPACE_SZ	260
 #define VGT_BAR_NUM		4
 
 enum mocs_saverestore_mode {
@@ -353,6 +354,15 @@ struct vgt_device {
 
 	/* log dirty pages for vGPU */
 	vgt_logd_t logd;
+	int is_local; /* vGPU used within the OS and not for a virtual machine */
+	unsigned long opregion_gpa; /* Used for local case */
+	struct mm_struct *local_mm; /* mm of the local process */
+	struct task_struct *local_task; /* task_struct of the local thread
+					 * creating the vgt instance. */
+	int last_cfg_val;
+	unsigned long last_mmio_val;
+	unsigned long pci_config_base_addr;
+	void *emulate_ctxt;
 };
 
 typedef u32 reg_info_t;
@@ -528,6 +538,7 @@ struct pgt_device {
 		struct vgt_common_plane_format *common_plane, enum vgt_plane_type plane);
 
 	bool dummy_vm_switch;
+	int is_local;
 };
 
 /*
@@ -1653,6 +1664,7 @@ static inline void vgt_set_all_vreg_bit(struct pgt_device *pdev, unsigned int va
 }
 
 #define vgt_lock_dev_flags(pdev, cpu, flags) {	\
+	/* if (pdev->is_local) PRINTK0("locking\n"); */ \
 	flags = 0;				\
 	if (likely(vgt_track_nest))		\
 		cpu = vgt_enter();		\
@@ -1665,6 +1677,7 @@ static inline void vgt_set_all_vreg_bit(struct pgt_device *pdev, unsigned int va
 }
 
 #define vgt_unlock_dev_flags(pdev, cpu, flags) {	\
+	/* if (pdev->is_local) PRINTK0("unlocking\n"); */ \
 	if (vgt_lock_irq)				\
 		spin_unlock_irqrestore(&pdev->lock, flags); \
 	else						\

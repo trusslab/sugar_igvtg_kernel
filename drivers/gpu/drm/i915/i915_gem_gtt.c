@@ -30,6 +30,7 @@
 #include "i915_vgpu.h"
 #include "i915_trace.h"
 #include "intel_drv.h"
+#include <linux/prints.h>
 
 /**
  * DOC: Global GTT views
@@ -148,10 +149,11 @@ static int sanitize_enable_ppgtt(struct drm_device *dev, int enable_ppgtt)
 		 * We'll remove it once bug is fixed, which is introduced
 		 * by enable 32/48 full PPGTT.
 		 *  */
-		!intel_vgpu_active(dev))
+		!intel_vgpu_active(dev)) {
 		return has_full_48bit_ppgtt ? 3 : 2;
-	else
+	} else {
 		return has_aliasing_ppgtt ? 1 : 0;
+	}
 }
 
 static int ppgtt_bind_vma(struct i915_vma *vma,
@@ -178,6 +180,10 @@ static void ppgtt_unbind_vma(struct i915_vma *vma)
 			     true);
 }
 
+int counter1 = 0;
+int counter2 = 0;
+int counter3 = 0;
+
 static gen8_pte_t gen8_pte_encode(dma_addr_t addr,
 				  enum i915_cache_level level,
 				  bool valid)
@@ -188,12 +194,21 @@ static gen8_pte_t gen8_pte_encode(dma_addr_t addr,
 	switch (level) {
 	case I915_CACHE_NONE:
 		pte |= PPAT_UNCACHED_INDEX;
+		if ((counter1 % 0x100) == 0) {
+			counter1++;
+		}
 		break;
 	case I915_CACHE_WT:
 		pte |= PPAT_DISPLAY_ELLC_INDEX;
+		if ((counter2 % 0x100) == 0) {
+			counter2++;
+		}
 		break;
 	default:
 		pte |= PPAT_CACHED_INDEX;
+		if ((counter3 % 0x100) == 0) {
+			counter3++;
+		}
 		break;
 	}
 

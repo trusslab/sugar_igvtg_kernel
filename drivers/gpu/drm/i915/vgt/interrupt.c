@@ -29,6 +29,7 @@
 #include <linux/bitops.h>
 #include <linux/slab.h>
 #include <linux/list.h>
+#include <linux/prints.h>
 
 #include "vgt.h"
 
@@ -1597,6 +1598,7 @@ DEFINE_VGT_GEN8_IRQ_INFO(de_misc, GEN8_DE_MISC_ISR);
 DEFINE_VGT_GEN8_IRQ_INFO(pcu, GEN8_PCU_ISR);
 DEFINE_VGT_GEN8_IRQ_INFO(master, GEN8_MASTER_IRQ);
 
+
 static void vgt_gen8_check_pending_irq(struct vgt_device *vgt)
 {
 	struct vgt_irq_host_state *hstate = vgt->pdev->irq_hstate;
@@ -1605,6 +1607,7 @@ static void vgt_gen8_check_pending_irq(struct vgt_device *vgt)
 	if (!(__vreg(vgt, GEN8_MASTER_IRQ) &
 				GEN8_MASTER_IRQ_CONTROL))
 		return;
+
 
 	for_each_set_bit(i, hstate->irq_info_bitmap, IRQ_INFO_MAX) {
 		struct vgt_irq_info *info = hstate->info[i];
@@ -1617,8 +1620,9 @@ static void vgt_gen8_check_pending_irq(struct vgt_device *vgt)
 			update_upstream_irq(vgt, info);
 	}
 
-	if (__vreg(vgt, GEN8_MASTER_IRQ) & ~GEN8_MASTER_IRQ_CONTROL)
+	if (__vreg(vgt, GEN8_MASTER_IRQ) & ~GEN8_MASTER_IRQ_CONTROL) {
 		vgt_inject_virtual_interrupt(vgt);
+	}
 }
 
 /* GEN8 interrupt handler */
@@ -1780,6 +1784,7 @@ struct vgt_irq_ops vgt_gen8_irq_ops = {
 };
 
 /* ======================common event logic====================== */
+
 
 /*
  * Trigger a virtual event which comes from other requests like hotplug agent
@@ -2267,6 +2272,8 @@ void vgt_fini_irq(struct pci_dev *pdev)
 
 	hstate->installed = false;
 }
+
+int flip_counter = 0;
 
 void vgt_inject_flip_done(struct vgt_device *vgt, enum pipe pipe, enum vgt_plane_type plane)
 {

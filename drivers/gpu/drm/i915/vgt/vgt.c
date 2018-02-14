@@ -126,11 +126,12 @@ int preallocated_oos_pages = -1;
 module_param_named(preallocated_oos_pages, preallocated_oos_pages, int, 0600);
 MODULE_PARM_DESC(preallocated_oos_pages, "Amount of pre-allocated oos pages");
 
-bool spt_out_of_sync = true;
+
+bool spt_out_of_sync = false;
 module_param_named(spt_out_of_sync, spt_out_of_sync, bool, 0600);
 MODULE_PARM_DESC(spt_out_of_sync, "Enable SPT out of sync");
 
-bool logd_enable = true;
+bool logd_enable = false;
 module_param_named(logd_enable, logd_enable, bool, 0600);
 MODULE_PARM_DESC(logd_enable, "Enable vGPU log dirty pages");
 
@@ -266,6 +267,7 @@ struct pci_dev *pgt_to_pci(struct pgt_device *pdev)
 {
 	return pdev->pdev;
 }
+
 
 /*
  * The thread to perform the VGT ownership switch.
@@ -1027,6 +1029,7 @@ static int vgt_initialize(struct pci_dev *dev)
 	vp.vgt_primary = 1; /* this isn't actually used for dom0 */
 	/* there is no upper cap for dom0 */
 	vp.cap = 0;
+	vp.is_local = 0;
 	if (create_vgt_instance(pdev, &vgt_dom0, vp) < 0)
 		goto err;
 
@@ -1232,6 +1235,15 @@ void vgt_panic(void)
         dump_stack();
         printk("________end of stack dump_________\n");
         panic("FATAL VGT ERROR\n");
+}
+
+void vgt_dump(void)
+{
+        struct pgt_device *pdev = &default_device;
+
+        show_debug(pdev);
+
+        printk("________end of stack dump_________\n");
 }
 
 static void do_device_reset(struct pgt_device *pdev)

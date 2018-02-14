@@ -18,6 +18,8 @@ struct scatterlist {
 #ifdef CONFIG_NEED_SG_DMA_LENGTH
 	unsigned int	dma_length;
 #endif
+	unsigned int 	type;
+#define SCATTERLIST_TYPE_VGT	1234
 };
 
 /*

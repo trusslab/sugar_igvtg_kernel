@@ -731,9 +731,6 @@ long drm_ioctl(struct file *filp,
 		goto err_i1;
 	}
 
-	retcode = drm_ioctl_permit(ioctl->flags, file_priv);
-	if (unlikely(retcode))
-		goto err_i1;
 
 	if (cmd & (IOC_IN | IOC_OUT)) {
 		if (asize <= sizeof(stack_kdata)) {

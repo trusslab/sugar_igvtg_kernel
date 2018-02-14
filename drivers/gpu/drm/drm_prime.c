@@ -32,6 +32,7 @@
 #include <drm/drm_gem.h>
 
 #include "drm_internal.h"
+#include <linux/prints.h>
 
 /*
  * DMA-BUF/GEM Object references and lifetime overview:
